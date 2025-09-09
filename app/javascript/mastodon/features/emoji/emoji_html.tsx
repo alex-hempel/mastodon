@@ -32,10 +32,6 @@ export const ModernEmojiHTML = ({
     deep: !shallow,
   });
 
-  if (emojifiedHtml === null) {
-    return null;
-  }
-
   return (
     <Wrapper
       {...props}
