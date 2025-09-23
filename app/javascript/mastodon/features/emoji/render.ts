@@ -41,22 +41,8 @@ export function emojifyElement<Element extends HTMLElement>(
   appState: EmojiAppState,
   extraEmojis: ExtraCustomEmojiMap = {},
 ): Element | null {
-  const finish = timingMeasurementHelper('emojifyElement');
-  // Check the cache and return it if we get a hit.
-  const cacheKey = createTextCacheKey(element, appState, extraEmojis);
-  const cached = textCache.get(cacheKey);
-  if (cached !== undefined) {
-    log('Cache hit on %s', element.outerHTML);
-    if (cached === null) {
-      // return null;
-    }
-    // element.innerHTML = cached;
-    // return element;
-  }
-
   // Exit if there are no emoji in the string.
   if (!stringHasAnyEmoji(element.innerHTML)) {
-    textCache.set(cacheKey, null);
     return null;
   }
 
@@ -96,8 +82,6 @@ export function emojifyElement<Element extends HTMLElement>(
       }
     }
   }
-  textCache.set(cacheKey, element.innerHTML);
-  finish();
   return element;
 }
 
@@ -106,45 +90,19 @@ export function emojifyText(
   appState: EmojiAppState,
   extraEmojis: ExtraCustomEmojiMap = {},
 ): string | null {
-  const cacheKey = createTextCacheKey(text, appState, extraEmojis);
-  const cached = textCache.get(cacheKey);
-  if (cached !== undefined) {
-    log('Cache hit on %s', text);
-    return cached ?? text;
-  }
   if (!stringHasAnyEmoji(text)) {
-    textCache.set(cacheKey, null);
     return text;
   }
   const tokens = tokenizeText(text, appState.mode);
   const eleArray = tokensToElementArray(tokens, appState, extraEmojis);
   if (!eleArray) {
-    textCache.set(cacheKey, null);
     return text;
   }
   const rendered = renderedToHTML(eleArray, document.createElement('div'));
-  textCache.set(cacheKey, rendered.innerHTML);
   return rendered.innerHTML;
 }
 
 // Private functions
-
-// This is the text cache. It contains full HTML strings or null to indicate there is no emoji here.
-const textCache = createLimitedCache<string | null>({
-  log: log.extend('text'),
-});
-
-function createTextCacheKey(
-  input: HTMLElement | string,
-  appState: EmojiAppState,
-  extraEmojis: ExtraCustomEmojiMap,
-) {
-  return JSON.stringify([
-    input instanceof HTMLElement ? input.outerHTML : input,
-    appState,
-    extraEmojis,
-  ]);
-}
 
 // These are the unicode/custom emoji data caches.
 const unicodeEmojiCache = createLimitedCache<
@@ -230,7 +188,10 @@ export function tokenizeText(text: string, mode: EmojiMode): TokenizedText {
   return tokens;
 }
 
-function shouldRenderUnicodeImage(code: string, mode: EmojiMode): boolean {
+export function shouldRenderUnicodeImage(
+  code: string,
+  mode: EmojiMode,
+): boolean {
   // If the mode is native or native with flags for non-flag emoji
   // we can just append the text node directly.
   if (mode === EMOJI_MODE_NATIVE) {
@@ -424,7 +385,6 @@ function timingMeasurementHelper(name: string) {
 
 // Testing helpers
 export const testCacheClear = () => {
-  textCache.clear();
   unicodeEmojiCache.clear();
   customEmojiCache.clear();
 };
