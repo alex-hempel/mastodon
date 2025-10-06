@@ -24,6 +24,9 @@ import { unicodeMapping } from 'mastodon/features/emoji/emoji_unicode_mapping_li
 import { autoPlayGif, reduceMotion, disableSwiping, mascot } from 'mastodon/initial_state';
 import { assetHost } from 'mastodon/utils/config';
 import { WithRouterPropTypes } from 'mastodon/utils/react_router';
+import { EmojiHTML } from '@/mastodon/components/emoji/html';
+import { isModernEmojiEnabled } from '@/mastodon/utils/environment';
+import { HandledLink } from '@/mastodon/components/status/handled_link';
 
 const messages = defineMessages({
   close: { id: 'lightbox.close', defaultMessage: 'Close' },
@@ -52,7 +55,7 @@ class ContentWithRouter extends ImmutablePureComponent {
   _updateLinks () {
     const node = this.node;
 
-    if (!node) {
+    if (!node || isModernEmojiEnabled()) {
       return;
     }
 
@@ -111,14 +114,32 @@ class ContentWithRouter extends ImmutablePureComponent {
     }
   };
 
+  handleElement = (element, {key, ...props}) => {
+    if (element instanceof HTMLAnchorElement) {
+      const mention = this.props.announcement.get('mentions').find(item => element.href === item.get('url'));
+      return (
+        <HandledLink
+          {...props}
+          href={element.href}
+          text={element.innerText}
+          mentionAccountId={mention?.get('id')}
+          key={key}
+        />
+      );
+    }
+    return undefined;
+  }
+
   render () {
     const { announcement } = this.props;
 
     return (
-      <div
-        className='announcements__item__content translate animate-parent'
+      <EmojiHTML
+        className='announcements__item__content translate'
         ref={this.setRef}
-        dangerouslySetInnerHTML={{ __html: announcement.get('contentHtml') }}
+        htmlString={announcement.get('contentHtml')}
+        onElement={this.handleElement.bind(this)}
+        extraEmojis={announcement.get('emojis')}
       />
     );
   }
